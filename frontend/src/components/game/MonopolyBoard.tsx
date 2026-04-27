@@ -362,20 +362,14 @@ function PlayerToken({ player }: { player: PlayerState }) {
   return (
     <div
       title={player.username}
-      className="relative transition-all duration-150"
-      style={{ width: 16, height: 18 }}
-    >
-      <svg viewBox="0 0 24 28" width="16" height="18" style={{ filter: 'drop-shadow(0 1px 1.5px rgba(0,0,0,0.5))' }}>
-        {/* Pawn silhouette */}
-        <path
-          d="M12 2 C9.8 2 8 3.8 8 6 C8 7.4 8.7 8.6 9.8 9.3 L8.5 13 L7 15.5 L7 17 L17 17 L17 15.5 L15.5 13 L14.2 9.3 C15.3 8.6 16 7.4 16 6 C16 3.8 14.2 2 12 2 Z M5.5 19 L18.5 19 L20 25 L4 25 Z"
-          fill={player.color}
-          stroke="white"
-          strokeWidth="1.2"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </div>
+      style={{
+        width: 15,
+        height: 15,
+        backgroundColor: player.color,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.5)',
+      }}
+      className="rounded-full border-2 border-white transition-all duration-150"
+    />
   );
 }
 
