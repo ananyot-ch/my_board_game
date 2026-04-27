@@ -11,7 +11,6 @@ docker compose up
 - Frontend: http://localhost:5173
 - Backend:  http://localhost:3000/api/health
 - Postgres: localhost:5432 (boardgame / boardgame_pass)
-- Redis:    localhost:6379
 
 Source files are mounted into the containers — code changes hot-reload automatically.
 
@@ -42,7 +41,6 @@ GROQ_API_KEY=...
 |-----------|---------|-----------|
 | Backend (NestJS + Socket.io) | **Render** Web Service | 750 hr/mo · sleeps after 15 min idle |
 | Postgres | **Neon** | 0.5 GB · always-on |
-| Redis | **Upstash** | 10K cmds/day · 256 MB *(optional — not wired yet)* |
 | Frontend (React/Vite) | **Vercel** | unlimited bandwidth |
 
 ### Step 1 — Database (Neon)
@@ -91,14 +89,6 @@ GROQ_API_KEY=...
 
 5. Deploy. Frontend URL will be `https://<project>.vercel.app`.
 6. Go back to **Render → Environment** and update `FRONTEND_URL` to the Vercel URL, then redeploy backend.
-
-### Step 4 — Redis (optional, future)
-
-Upstash Redis isn't required yet — game state is in-memory. If you wire it later for session persistence:
-
-1. Sign up at https://upstash.com → create Redis DB (region: Singapore)
-2. Copy the `rediss://` connection string
-3. In Render, set `REDIS_URL=rediss://...`
 
 ---
 

@@ -1,7 +1,7 @@
 # Local development stack — `docker compose up`
 # - Backend on :3000 (hot-reload via volume mount)
 # - Frontend on :5173 (Vite dev server, hot-reload)
-# - Postgres on :5432, Redis on :6379
+# - Postgres on :5432
 
 services:
   postgres:
@@ -22,15 +22,6 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    container_name: boardgame_redis
-    restart: unless-stopped
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis_data:/data
-
   backend:
     build:
       context: ./backend
@@ -45,8 +36,6 @@ services:
       DB_USERNAME: boardgame
       DB_PASSWORD: boardgame_pass
       DB_NAME: boardgame_db
-      REDIS_HOST: redis
-      REDIS_PORT: '6379'
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_in_prod_min_32_chars}
       JWT_EXPIRES_IN: 7d
       FRONTEND_URL: http://localhost:5173
@@ -62,8 +51,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
 
   frontend:
     build:
@@ -84,4 +71,3 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
