@@ -6,8 +6,9 @@ services:
   - type: web
     name: boardgame-backend
     runtime: docker
-    rootDir: backend
-    dockerfilePath: ./Dockerfile
+    repo: https://github.com/ananyot-ch/my_board_game
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
     plan: free
     region: singapore
     healthCheckPath: /api/health
@@ -16,11 +17,10 @@ services:
         value: production
       - key: PORT
         value: '3000'
-      # Set these manually in the Render dashboard:
-      #   DATABASE_URL    — from Neon (postgresql://...?sslmode=require)
-      #   JWT_SECRET      — generate via `openssl rand -base64 48`
-      #   FRONTEND_URL    — your Vercel URL (or `*` temporarily)
-      #   GEMINI_API_KEY  — optional, for quiz mode
-      #   (and other AI provider keys as needed)
       - key: JWT_EXPIRES_IN
         value: 7d
+      # Set these manually in the Render dashboard:
+      #   DATABASE_URL    — from Neon
+      #   JWT_SECRET      — long random string
+      #   FRONTEND_URL    — your Vercel URL (or `*` temporarily)
+      #   GEMINI_API_KEY  — optional
