@@ -272,6 +272,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  @SubscribeMessage('game:build_house')
+  handleBuildHouse(
+    @MessageBody() payload: { roomId: string; position: number },
+    @ConnectedSocket() client: AuthSocket,
+  ) {
+    const state = this.monopolyService.buildHouse(payload.roomId, client.userId, payload.position);
+    if (!state) { client.emit('game:error', { message: 'สร้างบ้านไม่ได้ตอนนี้' }); return; }
+    this.server.to(`room:${payload.roomId}`).emit('game:state_sync', state);
+  }
+
+  @SubscribeMessage('game:sell_house')
+  handleSellHouse(
+    @MessageBody() payload: { roomId: string; position: number },
+    @ConnectedSocket() client: AuthSocket,
+  ) {
+    const state = this.monopolyService.sellHouse(payload.roomId, client.userId, payload.position);
+    if (!state) { client.emit('game:error', { message: 'ขายบ้านไม่ได้ตอนนี้' }); return; }
+    this.server.to(`room:${payload.roomId}`).emit('game:state_sync', state);
+  }
+
   @SubscribeMessage('game:give_up')
   handleGiveUp(@MessageBody() roomId: string, @ConnectedSocket() client: AuthSocket) {
     const state = this.monopolyService.giveUp(roomId, client.userId);

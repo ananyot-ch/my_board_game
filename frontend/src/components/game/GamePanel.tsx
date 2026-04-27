@@ -44,6 +44,108 @@ function Die({ value, spinning }: { value: number; spinning?: boolean }) {
   );
 }
 
+// ─── Build / sell houses panel ────────────────────────────────────────────────
+
+function BuildPanel({
+  gameState, myId, onBuild, onSell,
+}: {
+  gameState: GameState;
+  myId: string;
+  onBuild: (pos: number) => void;
+  onSell: (pos: number) => void;
+}) {
+  const me = gameState.players.find(p => p.id === myId);
+
+  // Find groups where I own all properties
+  const myMonopolies = new Set<string>();
+  const groups = new Map<string, number[]>();
+  gameState.board.forEach((s, i) => {
+    if (s.type !== 'property' || !s.group) return;
+    if (!groups.has(s.group)) groups.set(s.group, []);
+    groups.get(s.group)!.push(i);
+  });
+  for (const [group, positions] of groups) {
+    const ownsAll = positions.every(p => gameState.ownedProperties[String(p)]?.ownerId === myId);
+    if (ownsAll) myMonopolies.add(group);
+  }
+
+  // Buildable properties = properties in my monopolies (sorted by group)
+  const rows = Array.from(myMonopolies).flatMap(group => {
+    const positions = groups.get(group)!;
+    return positions.map(pos => {
+      const space = gameState.board[pos];
+      const owned = gameState.ownedProperties[String(pos)];
+      const houses = owned?.houses ?? 0;
+      const hotel = owned?.hotel ?? false;
+      const level = houses + (hotel ? 5 : 0);
+
+      // Even rule
+      const groupLevels = positions.map(p => {
+        const o = gameState.ownedProperties[String(p)];
+        return (o?.houses ?? 0) + (o?.hotel ? 5 : 0);
+      });
+      const minLevel = Math.min(...groupLevels);
+      const maxLevel = Math.max(...groupLevels);
+      const cost = space.houseCost ?? 0;
+      const refund = Math.floor(cost / 2);
+
+      const canBuild = !hotel && level === minLevel && (me?.money ?? 0) >= cost;
+      const canSell  = (houses > 0 || hotel) && level === maxLevel;
+
+      return { pos, space, group, houses, hotel, cost, refund, canBuild, canSell };
+    });
+  });
+
+  if (rows.length === 0) {
+    return (
+      <div className="mt-2 bg-gray-900/40 rounded-lg p-2.5 text-center">
+        <p className="text-gray-400 text-xs">ยังไม่มีกลุ่มสีที่ครองครบ</p>
+        <p className="text-gray-500 text-[10px] mt-0.5">ครองครบกลุ่มเดียวกันถึงจะสร้างบ้านได้</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 bg-gray-900/40 rounded-lg p-2 space-y-1 max-h-52 overflow-y-auto">
+      <p className="text-[10px] text-gray-500 px-1">บ้านสูงสุด 4 หลัง · บ้านที่ 5 = โรงแรม · ขายคืนครึ่งราคา</p>
+      {rows.map(r => (
+        <div key={r.pos} className="flex items-center justify-between bg-gray-800 rounded-md px-2 py-1.5 text-xs">
+          <div className="flex-1 min-w-0">
+            <p className="text-white truncate font-medium">{r.space.name}</p>
+            <p className="text-gray-400 text-[10px]">
+              {r.hotel ? '🏨 โรงแรม' : r.houses > 0 ? `🏠 ${r.houses} หลัง` : 'ที่ดินเปล่า'}
+              <span className="text-gray-500"> · ฿{r.cost.toLocaleString()}/หลัง</span>
+            </p>
+          </div>
+          <div className="flex gap-1 shrink-0 ml-2">
+            <button
+              onClick={() => onSell(r.pos)}
+              disabled={!r.canSell}
+              title={r.canSell ? `ขายคืน +฿${r.refund.toLocaleString()}` : 'ขายไม่ได้ (ต้องเริ่มจากที่ดินที่มีบ้านสูงสุดในกลุ่ม)'}
+              className="w-7 h-7 rounded-md bg-red-700/70 hover:bg-red-600 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold transition active:scale-90"
+            >
+              −
+            </button>
+            <button
+              onClick={() => onBuild(r.pos)}
+              disabled={!r.canBuild}
+              title={
+                r.hotel ? 'โรงแรมเต็มแล้ว' :
+                (me?.money ?? 0) < r.cost ? 'เงินไม่พอ' :
+                !r.canBuild ? 'ต้องสร้างให้ทั่วก่อน (even rule)' :
+                `สร้างบ้าน -฿${r.cost.toLocaleString()}`
+              }
+              className="w-7 h-7 rounded-md bg-green-700/70 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold transition active:scale-90"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Panel ────────────────────────────────────────────────────────────────────
 
 export default function GamePanel({
@@ -79,6 +181,8 @@ export default function GamePanel({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const [showBuild, setShowBuild] = useState(false);
+
   function roll() {
     setIsRolling(true);
     getSocket().emit('game:roll', roomId);
@@ -87,6 +191,8 @@ export default function GamePanel({
   function decline() { getSocket().emit('game:decline', roomId); }
   function sell(position: number) { getSocket().emit('game:sell', { roomId, position }); }
   function giveUp()  { if (confirm('ยอมแพ้และล้มละลาย?')) getSocket().emit('game:give_up', roomId); }
+  function buildHouse(position: number) { getSocket().emit('game:build_house', { roomId, position }); }
+  function sellHouse(position: number)  { getSocket().emit('game:sell_house',  { roomId, position }); }
 
   // Properties owned by me (for selling phase)
   const myProperties = Object.entries(gameState.ownedProperties)
@@ -151,12 +257,29 @@ export default function GamePanel({
             )}
 
             {isMyTurn && gameState.phase === 'rolling' && !isRolling && !isAnimating && (
-              <button
-                onClick={roll}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold py-2.5 rounded-lg transition flex items-center justify-center gap-2"
-              >
-                🎲 ทอยลูกเต๋า
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={roll}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold py-2.5 rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  🎲 ทอยลูกเต๋า
+                </button>
+                <button
+                  onClick={() => setShowBuild(v => !v)}
+                  className="w-full bg-gray-700 hover:bg-gray-600 active:scale-95 text-white text-xs py-1.5 rounded-lg transition"
+                >
+                  {showBuild ? '× ปิด' : '🏗️ จัดการที่ดิน'}
+                </button>
+              </div>
+            )}
+
+            {isMyTurn && gameState.phase === 'rolling' && showBuild && (
+              <BuildPanel
+                gameState={gameState}
+                myId={myId}
+                onBuild={buildHouse}
+                onSell={sellHouse}
+              />
             )}
 
             {(isRolling || isAnimating) && isMyTurn && (

@@ -61,15 +61,62 @@ function spaceColorBar(group: string | undefined, side: 'top' | 'bottom' | 'left
   return <div style={style} />;
 }
 
-function ownedDot(owned: OwnedProperty | undefined, players: PlayerState[]) {
+function ownerBar(
+  owned: OwnedProperty | undefined,
+  players: PlayerState[],
+  side: 'top' | 'bottom' | 'left' | 'right',
+) {
   if (!owned) return null;
   const owner = players.find(p => p.id === owned.ownerId);
   if (!owner) return null;
+
+  // Owner bar is on the OPPOSITE side of the group color bar (i.e. outer edge of the board)
+  const oppositeSide =
+    side === 'top' ? 'bottom' :
+    side === 'bottom' ? 'top' :
+    side === 'left' ? 'right' : 'left';
+
+  const isHorizontal = oppositeSide === 'top' || oppositeSide === 'bottom';
+  const barStyle: React.CSSProperties = {
+    backgroundColor: owner.color,
+    position: 'absolute',
+    ...(oppositeSide === 'top'    && { top: 0,    left: 0, right: 0,  height: 8 }),
+    ...(oppositeSide === 'bottom' && { bottom: 0, left: 0, right: 0,  height: 8 }),
+    ...(oppositeSide === 'left'   && { left: 0,   top: 0,  bottom: 0, width: 8  }),
+    ...(oppositeSide === 'right'  && { right: 0,  top: 0,  bottom: 0, width: 8  }),
+  };
+
+  // Building icons sit ON TOP of the owner bar
+  const buildingCount = owned.hotel ? 1 : owned.houses;
+  const buildingIcon = owned.hotel ? '🏨' : '🏠';
+
+  const iconsStyle: React.CSSProperties = {
+    position: 'absolute',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+    zIndex: 2,
+    fontSize: 8,
+    lineHeight: 1,
+    textShadow: '0 0 2px rgba(0,0,0,0.6)',
+    ...(oppositeSide === 'top'    && { top: -3,    left: 0, right: 0,  height: 12, flexDirection: 'row' }),
+    ...(oppositeSide === 'bottom' && { bottom: -3, left: 0, right: 0,  height: 12, flexDirection: 'row' }),
+    ...(oppositeSide === 'left'   && { left: -3,   top: 0,  bottom: 0, width: 12,  flexDirection: 'column' }),
+    ...(oppositeSide === 'right'  && { right: -3,  top: 0,  bottom: 0, width: 12,  flexDirection: 'column' }),
+  };
+
   return (
-    <div
-      style={{ backgroundColor: owner.color }}
-      className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full border border-white/60 shadow"
-    />
+    <>
+      <div style={barStyle} title={`เจ้าของ: ${owner.username}`} />
+      {buildingCount > 0 && (
+        <div style={iconsStyle}>
+          {Array.from({ length: Math.min(buildingCount, isHorizontal ? 5 : 4) }).map((_, i) => (
+            <span key={i}>{buildingIcon}</span>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -258,11 +305,9 @@ function SpaceCell({
   const icon = SPACE_ICONS[space.type];
   const showIcon = !space.group;
 
-  const paddingClass =
-    colorBarSide === 'top'    ? 'pt-3' :
-    colorBarSide === 'bottom' ? 'pb-3' :
-    colorBarSide === 'left'   ? 'pl-3' :
-    colorBarSide === 'right'  ? 'pr-3' : '';
+  // Padding for both color bar (group, inner side) AND owner bar (outer side)
+  const isVertical = colorBarSide === 'top' || colorBarSide === 'bottom';
+  const innerPadding = isVertical ? 'py-2.5' : 'px-2.5';
 
   return (
     <div
@@ -273,9 +318,9 @@ function SpaceCell({
       }`}
     >
       {spaceColorBar(space.group, colorBarSide)}
-      {ownedDot(owned, gameState.players)}
+      {ownerBar(owned, gameState.players, colorBarSide)}
 
-      <div className={`flex flex-col items-center justify-center gap-0.5 px-0.5 w-full h-full ${paddingClass}`}>
+      <div className={`flex flex-col items-center justify-center gap-0.5 px-0.5 w-full h-full ${innerPadding}`}>
         {showIcon && (
           <span style={{ fontSize: '11px' }} className="leading-none">{icon}</span>
         )}
@@ -297,19 +342,39 @@ function SpaceCell({
         )}
       </div>
 
-      {/* Player tokens */}
+      {/* Player tokens — centered in the cell */}
       {onSpace.length > 0 && (
-        <div className="absolute bottom-0 left-0 flex flex-wrap gap-0.5 p-0.5 z-10">
-          {onSpace.map(p => (
-            <div
-              key={p.id}
-              title={p.username}
-              style={{ backgroundColor: p.color }}
-              className="w-3 h-3 rounded-full border-2 border-white shadow-md transition-all duration-150"
-            />
-          ))}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <div className="flex flex-wrap items-center justify-center gap-0.5 max-w-[80%]">
+            {onSpace.map(p => (
+              <PlayerToken key={p.id} player={p} />
+            ))}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── player token (chess-pawn shape) ──────────────────────────────────────────
+
+function PlayerToken({ player }: { player: PlayerState }) {
+  return (
+    <div
+      title={player.username}
+      className="relative transition-all duration-150"
+      style={{ width: 16, height: 18 }}
+    >
+      <svg viewBox="0 0 24 28" width="16" height="18" style={{ filter: 'drop-shadow(0 1px 1.5px rgba(0,0,0,0.5))' }}>
+        {/* Pawn silhouette */}
+        <path
+          d="M12 2 C9.8 2 8 3.8 8 6 C8 7.4 8.7 8.6 9.8 9.3 L8.5 13 L7 15.5 L7 17 L17 17 L17 15.5 L15.5 13 L14.2 9.3 C15.3 8.6 16 7.4 16 6 C16 3.8 14.2 2 12 2 Z M5.5 19 L18.5 19 L20 25 L4 25 Z"
+          fill={player.color}
+          stroke="white"
+          strokeWidth="1.2"
+          strokeLinejoin="round"
+        />
+      </svg>
     </div>
   );
 }

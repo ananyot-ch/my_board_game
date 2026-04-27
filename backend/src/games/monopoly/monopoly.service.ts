@@ -284,6 +284,111 @@ export class MonopolyService {
     return this.serialize(state);
   }
 
+  /**
+   * Buy a house (or hotel after 4 houses) on a property.
+   * Requirements:
+   *  - phase = 'rolling' (player's own turn, before/after roll)
+   *  - player owns ALL properties in the group (monopoly)
+   *  - "even building" — can't build if another property in the group has fewer houses
+   *  - houses cap at 4; 5th purchase converts to hotel
+   *  - player has enough money
+   */
+  buildHouse(roomId: string, playerId: string, position: number): SerializableGameState | null {
+    const state = this.games.get(roomId);
+    if (!state || state.phase !== 'rolling') return null;
+
+    const current = state.players[state.currentPlayerIndex];
+    if (current.id !== playerId) return null;
+
+    const space = state.board[position];
+    if (!space || space.type !== 'property' || !space.group) return null;
+
+    const owned = state.ownedProperties.get(position);
+    if (!owned || owned.ownerId !== playerId) return null;
+    if (owned.hotel) return null; // already maxed
+
+    // Must own all properties in the group
+    const groupPositions = state.board.reduce<number[]>((acc, s, i) => {
+      if (s.group === space.group && s.type === 'property') acc.push(i);
+      return acc;
+    }, []);
+    const ownsAll = groupPositions.every(p => state.ownedProperties.get(p)?.ownerId === playerId);
+    if (!ownsAll) return null;
+
+    // Even building rule — current level must be the lowest in the group
+    const currentLevel = owned.houses + (owned.hotel ? 5 : 0);
+    const minLevel = Math.min(
+      ...groupPositions.map(p => {
+        const o = state.ownedProperties.get(p);
+        return (o?.houses ?? 0) + (o?.hotel ? 5 : 0);
+      }),
+    );
+    if (currentLevel !== minLevel) return null;
+
+    const cost = space.houseCost ?? 0;
+    if (current.money < cost) return null;
+
+    // Apply
+    current.money -= cost;
+    if (owned.houses === 4) {
+      owned.houses = 0;
+      owned.hotel = true;
+      state.lastEvent = `${current.username} สร้างโรงแรมที่ ${space.name} (-฿${cost.toLocaleString()})`;
+    } else {
+      owned.houses += 1;
+      state.lastEvent = `${current.username} สร้างบ้านหลังที่ ${owned.houses} ที่ ${space.name} (-฿${cost.toLocaleString()})`;
+    }
+
+    return this.serialize(state);
+  }
+
+  /**
+   * Sell a house/hotel back to the bank for half price.
+   * Same even-building constraint in reverse — can only sell if it's the highest
+   * (or tied for highest) in the group.
+   */
+  sellHouse(roomId: string, playerId: string, position: number): SerializableGameState | null {
+    const state = this.games.get(roomId);
+    if (!state || state.phase !== 'rolling') return null;
+
+    const current = state.players[state.currentPlayerIndex];
+    if (current.id !== playerId) return null;
+
+    const space = state.board[position];
+    if (!space || space.type !== 'property' || !space.group) return null;
+
+    const owned = state.ownedProperties.get(position);
+    if (!owned || owned.ownerId !== playerId) return null;
+    if (owned.houses === 0 && !owned.hotel) return null;
+
+    // Even-building reverse: must be the max (or tied) in the group
+    const groupPositions = state.board.reduce<number[]>((acc, s, i) => {
+      if (s.group === space.group && s.type === 'property') acc.push(i);
+      return acc;
+    }, []);
+    const currentLevel = owned.houses + (owned.hotel ? 5 : 0);
+    const maxLevel = Math.max(
+      ...groupPositions.map(p => {
+        const o = state.ownedProperties.get(p);
+        return (o?.houses ?? 0) + (o?.hotel ? 5 : 0);
+      }),
+    );
+    if (currentLevel !== maxLevel) return null;
+
+    const refund = Math.floor((space.houseCost ?? 0) / 2);
+    current.money += refund;
+    if (owned.hotel) {
+      owned.hotel = false;
+      owned.houses = 4;
+      state.lastEvent = `${current.username} ขายโรงแรมที่ ${space.name} (+฿${refund.toLocaleString()})`;
+    } else {
+      owned.houses -= 1;
+      state.lastEvent = `${current.username} ขายบ้านที่ ${space.name} (+฿${refund.toLocaleString()})`;
+    }
+
+    return this.serialize(state);
+  }
+
   giveUp(roomId: string, playerId: string): SerializableGameState | null {
     const state = this.games.get(roomId);
     if (!state || state.phase !== 'selling' || !state.pendingDebt) return null;
