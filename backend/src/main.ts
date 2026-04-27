@@ -3,9 +3,24 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
-function parseOrigins(raw: string | undefined): string[] | true {
+/**
+ * Build a CORS origin checker that accepts:
+ *   - exact match against FRONTEND_URL entries (comma-separated)
+ *   - any *.vercel.app preview deployment of the same project
+ *   - same-origin / no-origin requests (curl, health checks)
+ */
+function buildOriginChecker(raw: string | undefined): any {
   if (!raw || raw.trim() === '*') return true;
-  return raw.split(',').map(s => s.trim()).filter(Boolean);
+  const allowed = new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
+
+  return (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin) return cb(null, true);
+    if (allowed.has(origin)) return cb(null, true);
+    if (/^https:\/\/my-board-game(-[a-z0-9-]+)?\.vercel\.app$/.test(origin)) {
+      return cb(null, true);
+    }
+    cb(new Error(`CORS blocked: ${origin}`), false);
+  };
 }
 
 async function bootstrap() {
@@ -15,7 +30,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: parseOrigins(process.env.FRONTEND_URL),
+    origin: buildOriginChecker(process.env.FRONTEND_URL),
     credentials: true,
   });
 

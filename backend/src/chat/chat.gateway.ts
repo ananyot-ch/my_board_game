@@ -36,7 +36,17 @@ function defaultSettings(): GameSettings {
 
 @WebSocketGateway({
   cors: {
-    origin: (process.env.FRONTEND_URL ?? '*').split(',').map(s => s.trim()),
+    origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin) return cb(null, true);
+      const raw = process.env.FRONTEND_URL ?? '*';
+      if (raw.trim() === '*') return cb(null, true);
+      const allowed = raw.split(',').map(s => s.trim());
+      if (allowed.includes(origin)) return cb(null, true);
+      if (/^https:\/\/my-board-game(-[a-z0-9-]+)?\.vercel\.app$/.test(origin)) {
+        return cb(null, true);
+      }
+      cb(new Error(`CORS blocked: ${origin}`), false);
+    },
     credentials: true,
   },
 })
