@@ -19,8 +19,9 @@ services:
         value: '3000'
       - key: JWT_EXPIRES_IN
         value: 7d
+      - key: FRONTEND_URL
+        value: https://my-board-game-ten.vercel.app
       # Set these manually in the Render dashboard:
       #   DATABASE_URL    — from Neon
       #   JWT_SECRET      — long random string
-      #   FRONTEND_URL    — your Vercel URL (or `*` temporarily)
       #   GEMINI_API_KEY  — optional
