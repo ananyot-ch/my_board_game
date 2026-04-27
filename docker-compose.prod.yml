@@ -1,0 +1,27 @@
+# Production-like local stack — simulates how it'll run on Render/Vercel
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Frontend served by nginx on :80, proxying /api and /socket.io to backend
+# Backend builds with `prod` target (no hot-reload, no source mount)
+
+services:
+  backend:
+    build:
+      target: prod
+    volumes: []
+    environment:
+      NODE_ENV: production
+      FRONTEND_URL: http://localhost
+
+  frontend:
+    build:
+      context: ./frontend
+      target: prod
+      args:
+        # Empty = use relative URLs → nginx proxies to backend container
+        VITE_API_URL: ''
+        VITE_SOCKET_URL: ''
+    volumes: []
+    ports:
+      - '80:80'
+    environment: {}

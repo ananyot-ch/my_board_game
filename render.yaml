@@ -1,0 +1,26 @@
+# Render Blueprint — `render.yaml`
+# Connect this repo to Render and it'll auto-create the service.
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: boardgame-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: singapore
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '3000'
+      # Set these manually in the Render dashboard:
+      #   DATABASE_URL    — from Neon (postgresql://...?sslmode=require)
+      #   JWT_SECRET      — generate via `openssl rand -base64 48`
+      #   FRONTEND_URL    — your Vercel URL (https://my-app.vercel.app)
+      #   GEMINI_API_KEY  — optional, for quiz mode
+      #   (and other AI provider keys as needed)
+      - key: JWT_EXPIRES_IN
+        value: 7d
