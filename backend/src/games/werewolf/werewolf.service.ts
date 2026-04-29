@@ -67,6 +67,11 @@ export class WerewolfService {
     return this.games.get(roomId) ?? null;
   }
 
+  /** Drop a finished/abandoned game from memory. Idempotent. */
+  removeGame(roomId: string): void {
+    this.games.delete(roomId);
+  }
+
   getClientState(state: WerewolfState, viewerId: string): WerewolfClientState {
     const viewer = state.players.find(p => p.id === viewerId);
     const isEnded = state.phase === 'ended';

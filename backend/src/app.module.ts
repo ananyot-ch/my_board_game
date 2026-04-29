@@ -8,6 +8,7 @@ import { ChatModule } from './chat/chat.module';
 import { HealthController } from './health.controller';
 import { User } from './users/user.entity';
 import { Room } from './rooms/room.entity';
+import { InitSchema1714200000000 } from './migrations/1714200000000-InitSchema';
 
 @Module({
   imports: [
@@ -23,7 +24,11 @@ import { Room } from './rooms/room.entity';
         const base = {
           type: 'postgres' as const,
           entities: [User, Room],
+          // synchronize is dangerous in prod — it can drop columns silently.
+          // Migrations handle prod schema; dev still uses synchronize for fast iteration.
           synchronize: !isProd,
+          migrations: [InitSchema1714200000000],
+          migrationsRun: isProd,
           // Managed Postgres (Neon/Render/Supabase) requires SSL
           ssl: isProd ? { rejectUnauthorized: false } : false,
         };

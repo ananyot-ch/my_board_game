@@ -61,6 +61,11 @@ export class MonopolyService {
     return s ? this.serialize(s) : null;
   }
 
+  /** Drop a finished/abandoned game from memory. Idempotent. */
+  removeGame(roomId: string): void {
+    this.games.delete(roomId);
+  }
+
   rollDice(roomId: string, playerId: string, settings: GameSettings): SerializableGameState | null {
     const state = this.games.get(roomId);
     if (!state || state.phase !== 'rolling') return null;

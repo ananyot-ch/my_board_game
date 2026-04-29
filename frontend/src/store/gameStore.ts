@@ -58,7 +58,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     // Build animation paths for players who moved
-    const BOARD_SIZE = 40;
+    const boardSize = newState.board.length;
     const paths: Record<string, number[]> = {};
     let maxLen = 0;
 
@@ -70,7 +70,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const path: number[] = [];
       let pos = from;
       while (pos !== to) {
-        pos = (pos + 1) % BOARD_SIZE;
+        pos = (pos + 1) % boardSize;
         path.push(pos);
       }
       paths[p.id] = path;

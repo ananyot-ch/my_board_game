@@ -95,11 +95,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.server.to(`room:${roomId}`).emit('room:user_left', {
           userId: client.userId, username: client.username,
         });
+        this.cleanupEmptyRoom(roomId);
       }
     }
   }
 
   // ─── helpers ─────────────────────────────────────────────────────────────────
+
+  /** Clear all in-memory state for a room once the last player leaves. */
+  private cleanupEmptyRoom(roomId: string): void {
+    const players = this.roomPlayers.get(roomId);
+    if (players && players.size > 0) return;
+
+    this.roomPlayers.delete(roomId);
+    this.roomSettings.delete(roomId);
+
+    const timer = this.quizTimers.get(roomId);
+    if (timer) {
+      clearTimeout(timer);
+      this.quizTimers.delete(roomId);
+    }
+
+    this.monopolyService.removeGame(roomId);
+    this.werewolfService.removeGame(roomId);
+  }
 
   private emitWerewolfState(roomId: string, state: WerewolfState): void {
     const players = this.roomPlayers.get(roomId);
@@ -152,6 +171,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`room:${roomId}`).emit('room:user_left', {
       userId: client.userId, username: client.username,
     });
+    this.cleanupEmptyRoom(roomId);
   }
 
   // ─── chat ─────────────────────────────────────────────────────────────────────
