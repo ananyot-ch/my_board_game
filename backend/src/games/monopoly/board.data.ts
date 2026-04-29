@@ -24,14 +24,14 @@ const RAIL_RENT = [250, 500, 750, 1000];
 
 export const BOARD: BoardSpace[] = [
   { id: 0,  name: 'จุดเริ่มต้น',      type: 'go' },
-  // ── Bottom side: 2 brown + 8 light_blue, 4 specials interleaved ──
+  // ── Bottom side: brown ×5, light_blue ×5 ──
   prop(1,   'ลำปาง',                  'brown',      600),
   prop(2,   'นครสวรรค์',              'brown',      700),
   { id: 3,  name: 'กองทุนชุมชน',      type: 'community_chest' },
-  prop(4,   'หัวหิน',                 'light_blue', 1000),
-  prop(5,   'ชะอำ',                   'light_blue', 1100),
+  prop(4,   'หัวหิน',                 'brown',      1000),
+  prop(5,   'ชะอำ',                   'brown',      1100),
   { id: 6,  name: 'ภาษีเงินได้',      type: 'tax', amount: 500 },
-  prop(7,   'พัทยา',                  'light_blue', 1200),
+  prop(7,   'พัทยา',                  'brown',      1200),
   prop(8,   'ตราด',                   'light_blue', 1300),
   { id: 9,  name: 'รถไฟสายเหนือ',     type: 'railroad', price: 2000, rent: RAIL_RENT },
   prop(10,  'ระยอง',                  'light_blue', 1400),
@@ -40,13 +40,13 @@ export const BOARD: BoardSpace[] = [
   prop(13,  'บางแสน',                 'light_blue', 1600),
   prop(14,  'ศรีราชา',                'light_blue', 1700),
   { id: 15, name: 'คุก',              type: 'jail' },
-  // ── Left side: 3 pink + 8 orange, 3 specials ──
+  // ── Left side: pink ×5, orange ×6 ──
   prop(16,  'ภูเก็ต',                 'pink',       1800),
   prop(17,  'กระบี่',                 'pink',       1900),
   prop(18,  'เกาะสมุย',               'pink',       2000),
   { id: 19, name: 'บ.ไฟฟ้า',          type: 'utility', price: 1500 },
-  prop(20,  'อยุธยา',                 'orange',     2200),
-  prop(21,  'ราชบุรี',                'orange',     2300),
+  prop(20,  'อยุธยา',                 'pink',       2200),
+  prop(21,  'ราชบุรี',                'pink',       2300),
   prop(22,  'กาญจนบุรี',              'orange',     2400),
   { id: 23, name: 'รถไฟสายใต้',       type: 'railroad', price: 2000, rent: RAIL_RENT },
   prop(24,  'หาดใหญ่',                'orange',     2500),
@@ -56,13 +56,13 @@ export const BOARD: BoardSpace[] = [
   prop(28,  'นครศรีธรรมราช',          'orange',     2800),
   prop(29,  'สงขลา',                  'orange',     2900),
   { id: 30, name: 'จอดพัก',           type: 'free_parking' },
-  // ── Top side: 3 red + 8 yellow, 3 specials ──
+  // ── Top side: red ×5, yellow ×6 ──
   prop(31,  'ขอนแก่น',                'red',        3000),
   prop(32,  'อุบลราชธานี',            'red',        3100),
   prop(33,  'โคราช',                  'red',        3200),
   { id: 34, name: 'โชค',              type: 'chance' },
-  prop(35,  'เชียงใหม่',              'yellow',     3400),
-  prop(36,  'เชียงราย',               'yellow',     3500),
+  prop(35,  'เชียงใหม่',              'red',        3400),
+  prop(36,  'เชียงราย',               'red',        3500),
   prop(37,  'สุโขทัย',                'yellow',     3600),
   { id: 38, name: 'รถไฟสายอีสาน',     type: 'railroad', price: 2000, rent: RAIL_RENT },
   prop(39,  'แม่ฮ่องสอน',             'yellow',     3700),
@@ -72,14 +72,14 @@ export const BOARD: BoardSpace[] = [
   prop(43,  'ลำพูน',                  'yellow',     4000),
   prop(44,  'พะเยา',                  'yellow',     4100),
   { id: 45, name: 'ไปคุก',            type: 'go_to_jail' },
-  // ── Right side: 3 green + 7 dark_blue, 4 specials ──
+  // ── Right side: green ×5, dark_blue ×5 ──
   prop(46,  'นิมมาน',                 'green',      4200),
   prop(47,  'นครราชสีมา',             'green',      4300),
   { id: 48, name: 'กองทุนชุมชน',      type: 'community_chest' },
   prop(49,  'อุดรธานี',               'green',      4400),
   { id: 50, name: 'รถไฟสายกลาง',      type: 'railroad', price: 2000, rent: RAIL_RENT },
-  prop(51,  'สีลม',                   'dark_blue',  4600),
-  prop(52,  'สุขุมวิท',               'dark_blue',  4700),
+  prop(51,  'สีลม',                   'green',      4600),
+  prop(52,  'สุขุมวิท',               'green',      4700),
   { id: 53, name: 'โชค',              type: 'chance' },
   prop(54,  'เอกมัย',                 'dark_blue',  4800),
   prop(55,  'ทองหล่อ',                'dark_blue',  4900),
