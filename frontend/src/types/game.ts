@@ -34,6 +34,8 @@ export interface GameSettings {
   quizEnabled: boolean;
   quizDiscountPct: number;
   quizTimeoutSec: number;
+  landmarkPrice: number;
+  landmarkVisitFee: number;
 }
 
 export interface PlayerState {
@@ -50,6 +52,7 @@ export interface OwnedProperty {
   ownerId: string;
   houses: number;
   hotel: boolean;
+  landmark?: string;
 }
 
 export interface PendingDebt {
@@ -59,6 +62,7 @@ export interface PendingDebt {
 
 export interface PendingQuiz {
   rentAmount: number;
+  landmarkFee: number;
   ownerId: string;
   position: number;
   question: string | null;

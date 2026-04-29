@@ -31,6 +31,8 @@ function defaultSettings(): GameSettings {
     quizEnabled: true,
     quizDiscountPct: 20,
     quizTimeoutSec: 10,
+    landmarkPrice: 10000,
+    landmarkVisitFee: 2000,
   };
 }
 
@@ -289,6 +291,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const state = this.monopolyService.sellHouse(payload.roomId, client.userId, payload.position);
     if (!state) { client.emit('game:error', { message: 'ขายบ้านไม่ได้ตอนนี้' }); return; }
+    this.server.to(`room:${payload.roomId}`).emit('game:state_sync', state);
+  }
+
+  @SubscribeMessage('game:build_landmark')
+  handleBuildLandmark(
+    @MessageBody() payload: { roomId: string; position: number; landmarkId: string },
+    @ConnectedSocket() client: AuthSocket,
+  ) {
+    const settings = this.roomSettings.get(payload.roomId) ?? defaultSettings();
+    const state = this.monopolyService.buildLandmark(
+      payload.roomId, client.userId, payload.position, payload.landmarkId, settings,
+    );
+    if (!state) { client.emit('game:error', { message: 'สร้างสิ่งมหัศจรรย์ไม่ได้ตอนนี้' }); return; }
     this.server.to(`room:${payload.roomId}`).emit('game:state_sync', state);
   }
 

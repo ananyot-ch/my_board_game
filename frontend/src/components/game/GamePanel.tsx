@@ -1,13 +1,16 @@
 import { useRef, useEffect, useState } from 'react';
-import type { GameState } from '../../types/game';
+import type { GameState, GameSettings } from '../../types/game';
 import type { ChatMessage } from '../../types';
 import { getSocket } from '../../lib/socket';
 import { useGameStore } from '../../store/gameStore';
+import { LANDMARK_BY_ID } from '../../lib/landmarkData';
+import LandmarkPickerModal from './LandmarkPickerModal';
 
 interface Props {
   gameState: GameState;
   myId: string;
   roomId: string;
+  settings: GameSettings;
   messages: ChatMessage[];
   chatInput: string;
   onChatChange: (v: string) => void;
@@ -47,12 +50,14 @@ function Die({ value, spinning }: { value: number; spinning?: boolean }) {
 // ─── Build / sell houses panel ────────────────────────────────────────────────
 
 function BuildPanel({
-  gameState, myId, onBuild, onSell,
+  gameState, myId, landmarkPrice, onBuild, onSell, onBuildLandmark,
 }: {
   gameState: GameState;
   myId: string;
+  landmarkPrice: number;
   onBuild: (pos: number) => void;
   onSell: (pos: number) => void;
+  onBuildLandmark: (pos: number) => void;
 }) {
   const me = gameState.players.find(p => p.id === myId);
 
@@ -92,7 +97,10 @@ function BuildPanel({
       const canBuild = !hotel && level === minLevel && (me?.money ?? 0) >= cost;
       const canSell  = (houses > 0 || hotel) && level === maxLevel;
 
-      return { pos, space, group, houses, hotel, cost, refund, canBuild, canSell };
+      const landmarkId = owned?.landmark;
+      const canLandmark = hotel && !landmarkId && (me?.money ?? 0) >= landmarkPrice;
+
+      return { pos, space, group, houses, hotel, cost, refund, canBuild, canSell, landmarkId, canLandmark };
     });
   });
 
@@ -107,41 +115,68 @@ function BuildPanel({
 
   return (
     <div className="mt-2 bg-gray-900/40 rounded-lg p-2 space-y-1 max-h-52 overflow-y-auto">
-      <p className="text-[10px] text-gray-500 px-1">บ้านสูงสุด 4 หลัง · บ้านที่ 5 = โรงแรม · ขายคืนครึ่งราคา</p>
-      {rows.map(r => (
-        <div key={r.pos} className="flex items-center justify-between bg-gray-800 rounded-md px-2 py-1.5 text-xs">
-          <div className="flex-1 min-w-0">
-            <p className="text-white truncate font-medium">{r.space.name}</p>
-            <p className="text-gray-400 text-[10px]">
-              {r.hotel ? '🏨 โรงแรม' : r.houses > 0 ? `🏠 ${r.houses} หลัง` : 'ที่ดินเปล่า'}
-              <span className="text-gray-500"> · ฿{r.cost.toLocaleString()}/หลัง</span>
-            </p>
+      <p className="text-[10px] text-gray-500 px-1">
+        บ้านสูงสุด 4 · บ้านที่ 5 = โรงแรม · มีโรงแรมแล้วสร้าง 🏛️ Landmark ได้ (฿{landmarkPrice.toLocaleString()})
+      </p>
+      {rows.map(r => {
+        const landmark = r.landmarkId ? LANDMARK_BY_ID[r.landmarkId] : null;
+        return (
+          <div key={r.pos} className="flex items-center justify-between bg-gray-800 rounded-md px-2 py-1.5 text-xs">
+            <div className="flex-1 min-w-0">
+              <p className="text-white truncate font-medium">{r.space.name}</p>
+              <p className="text-gray-400 text-[10px]">
+                {landmark ? <>{landmark.icon} {landmark.name}</> :
+                 r.hotel ? '🏨 โรงแรม' :
+                 r.houses > 0 ? `🏠 ${r.houses} หลัง` : 'ที่ดินเปล่า'}
+                {!landmark && <span className="text-gray-500"> · ฿{r.cost.toLocaleString()}/หลัง</span>}
+              </p>
+            </div>
+            <div className="flex gap-1 shrink-0 ml-2">
+              {r.hotel && !landmark ? (
+                <button
+                  onClick={() => onBuildLandmark(r.pos)}
+                  disabled={!r.canLandmark}
+                  title={
+                    !r.hotel ? 'ต้องมีโรงแรมก่อน' :
+                    (me?.money ?? 0) < landmarkPrice ? 'เงินไม่พอ' :
+                    `สร้าง Landmark -฿${landmarkPrice.toLocaleString()}`
+                  }
+                  className="px-2 h-7 rounded-md bg-purple-700/80 hover:bg-purple-600 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white text-xs font-semibold transition active:scale-90"
+                >
+                  🏛️
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => onSell(r.pos)}
+                    disabled={!r.canSell || !!landmark}
+                    title={
+                      landmark ? 'มี Landmark แล้ว ขายไม่ได้' :
+                      r.canSell ? `ขายคืน +฿${r.refund.toLocaleString()}` : 'ขายไม่ได้ (ต้องเริ่มจากที่ดินที่มีบ้านสูงสุด)'
+                    }
+                    className="w-7 h-7 rounded-md bg-red-700/70 hover:bg-red-600 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold transition active:scale-90"
+                  >
+                    −
+                  </button>
+                  <button
+                    onClick={() => onBuild(r.pos)}
+                    disabled={!r.canBuild}
+                    title={
+                      r.hotel ? 'โรงแรมเต็มแล้ว' :
+                      (me?.money ?? 0) < r.cost ? 'เงินไม่พอ' :
+                      !r.canBuild ? 'ต้องสร้างให้ทั่วก่อน (even rule)' :
+                      `สร้างบ้าน -฿${r.cost.toLocaleString()}`
+                    }
+                    className="w-7 h-7 rounded-md bg-green-700/70 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold transition active:scale-90"
+                  >
+                    +
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <div className="flex gap-1 shrink-0 ml-2">
-            <button
-              onClick={() => onSell(r.pos)}
-              disabled={!r.canSell}
-              title={r.canSell ? `ขายคืน +฿${r.refund.toLocaleString()}` : 'ขายไม่ได้ (ต้องเริ่มจากที่ดินที่มีบ้านสูงสุดในกลุ่ม)'}
-              className="w-7 h-7 rounded-md bg-red-700/70 hover:bg-red-600 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold transition active:scale-90"
-            >
-              −
-            </button>
-            <button
-              onClick={() => onBuild(r.pos)}
-              disabled={!r.canBuild}
-              title={
-                r.hotel ? 'โรงแรมเต็มแล้ว' :
-                (me?.money ?? 0) < r.cost ? 'เงินไม่พอ' :
-                !r.canBuild ? 'ต้องสร้างให้ทั่วก่อน (even rule)' :
-                `สร้างบ้าน -฿${r.cost.toLocaleString()}`
-              }
-              className="w-7 h-7 rounded-md bg-green-700/70 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold transition active:scale-90"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -149,7 +184,7 @@ function BuildPanel({
 // ─── Panel ────────────────────────────────────────────────────────────────────
 
 export default function GamePanel({
-  gameState, myId, roomId, messages, chatInput, onChatChange, onChatSend,
+  gameState, myId, roomId, settings, messages, chatInput, onChatChange, onChatSend,
 }: Props) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isRolling, isAnimating, setIsRolling } = useGameStore();
@@ -182,6 +217,7 @@ export default function GamePanel({
   }, [messages]);
 
   const [showBuild, setShowBuild] = useState(false);
+  const [landmarkPickerPos, setLandmarkPickerPos] = useState<number | null>(null);
 
   function roll() {
     setIsRolling(true);
@@ -193,6 +229,11 @@ export default function GamePanel({
   function giveUp()  { if (confirm('ยอมแพ้และล้มละลาย?')) getSocket().emit('game:give_up', roomId); }
   function buildHouse(position: number) { getSocket().emit('game:build_house', { roomId, position }); }
   function sellHouse(position: number)  { getSocket().emit('game:sell_house',  { roomId, position }); }
+  function pickLandmark(landmarkId: string) {
+    if (landmarkPickerPos === null) return;
+    getSocket().emit('game:build_landmark', { roomId, position: landmarkPickerPos, landmarkId });
+    setLandmarkPickerPos(null);
+  }
 
   // Properties owned by me (for selling phase)
   const myProperties = Object.entries(gameState.ownedProperties)
@@ -210,6 +251,7 @@ export default function GamePanel({
     : null;
 
   return (
+    <>
     <div className="flex flex-col gap-3 h-full">
 
       {/* My status */}
@@ -277,8 +319,10 @@ export default function GamePanel({
               <BuildPanel
                 gameState={gameState}
                 myId={myId}
+                landmarkPrice={settings.landmarkPrice}
                 onBuild={buildHouse}
                 onSell={sellHouse}
+                onBuildLandmark={setLandmarkPickerPos}
               />
             )}
 
@@ -407,5 +451,17 @@ export default function GamePanel({
         </form>
       </div>
     </div>
+
+    {landmarkPickerPos !== null && (
+      <LandmarkPickerModal
+        gameState={gameState}
+        position={landmarkPickerPos}
+        price={settings.landmarkPrice}
+        myMoney={me?.money ?? 0}
+        onPick={pickLandmark}
+        onClose={() => setLandmarkPickerPos(null)}
+      />
+    )}
+    </>
   );
 }

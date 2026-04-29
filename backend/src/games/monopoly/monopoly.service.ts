@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { BOARD, PLAYER_COLORS } from './board.data';
 import { CHANCE_CARDS } from './chance.data';
 import { COMMUNITY_CHEST_CARDS } from './community_chest.data';
+import { LANDMARKS } from './landmark.data';
 import {
   BoardSpace, ChanceCard, GameSettings, GameState,
   OwnedProperty, PlayerState, SerializableGameState,
@@ -122,11 +123,14 @@ export class MonopolyService {
         const owner = state.players.find(p => p.id === owned.ownerId);
         if (owner && !owner.bankrupt) {
           const rent = this.calcRent(state, newPos, owned, d1 + d2 + d3);
-          // Quiz path: defer payment until answered/timeout
+          const landmarkFee = owned.landmark ? settings.landmarkVisitFee : 0;
+          // Quiz path: defer payment until answered/timeout. Quiz only discounts rent;
+          // landmark fee is always paid in full.
           if (settings.quizEnabled) {
             state.phase = 'quizzing';
             state.pendingQuiz = {
               rentAmount: rent,
+              landmarkFee,
               ownerId: owner.id,
               position: newPos,
               question: null,
@@ -138,18 +142,21 @@ export class MonopolyService {
               wasCorrect: null,
               finalRent: null,
             };
-            event += ` ต้องจ่ายค่าเช่า ฿${rent.toLocaleString()} ให้ ${owner.username} — ตอบคำถามเพื่อรับส่วนลด ${settings.quizDiscountPct}%`;
+            const feeNote = landmarkFee > 0 ? ` + ค่าเข้าชม ฿${landmarkFee.toLocaleString()}` : '';
+            event += ` ต้องจ่ายค่าเช่า ฿${rent.toLocaleString()}${feeNote} ให้ ${owner.username} — ตอบคำถามเพื่อรับส่วนลดค่าเช่า ${settings.quizDiscountPct}%`;
             state.lastEvent = event;
             return this.serialize(state);
           }
           // Direct payment (quiz disabled)
-          const r = this.chargePlayer(state, current, rent, owner, true);
+          const total = rent + landmarkFee;
+          const r = this.chargePlayer(state, current, total, owner, true);
           if (r.pending) {
-            event += ` ค้างค่าเช่า ฿${rent.toLocaleString()} ให้ ${owner.username} — ต้องขายทรัพย์สิน`;
+            event += ` ค้างค่าเช่า ฿${total.toLocaleString()} ให้ ${owner.username} — ต้องขายทรัพย์สิน`;
             state.lastEvent = event;
             return this.serialize(state);
           }
-          event += ` จ่ายค่าเช่า ฿${r.paid.toLocaleString()} ให้ ${owner.username}`;
+          const feeNote = landmarkFee > 0 ? ` (รวมค่าเข้าชม ฿${landmarkFee.toLocaleString()})` : '';
+          event += ` จ่าย ฿${r.paid.toLocaleString()}${feeNote} ให้ ${owner.username}`;
           if (r.bankrupt) {
             event += ` — ${current.username} ล้มละลาย! โอนทรัพย์สินให้ ${owner.username}`;
           }
@@ -389,6 +396,50 @@ export class MonopolyService {
     return this.serialize(state);
   }
 
+  /**
+   * Build a landmark (wonder) on a property that already has a hotel.
+   * - Each landmark id may only be used once per game
+   * - One landmark per property
+   * - Costs `settings.landmarkPrice`
+   * - Cannot be sold back; effect is a permanent visit fee on visitors
+   */
+  buildLandmark(
+    roomId: string,
+    playerId: string,
+    position: number,
+    landmarkId: string,
+    settings: GameSettings,
+  ): SerializableGameState | null {
+    const state = this.games.get(roomId);
+    if (!state || state.phase !== 'rolling') return null;
+
+    const current = state.players[state.currentPlayerIndex];
+    if (current.id !== playerId) return null;
+
+    const space = state.board[position];
+    if (!space || space.type !== 'property') return null;
+
+    const owned = state.ownedProperties.get(position);
+    if (!owned || owned.ownerId !== playerId) return null;
+    if (!owned.hotel) return null;       // requires hotel
+    if (owned.landmark) return null;      // already has one
+
+    if (!LANDMARKS.some(l => l.id === landmarkId)) return null;
+    // Globally unique — no other property may already have this landmark
+    for (const p of state.ownedProperties.values()) {
+      if (p.landmark === landmarkId) return null;
+    }
+
+    const cost = settings.landmarkPrice;
+    if (current.money < cost) return null;
+
+    current.money -= cost;
+    owned.landmark = landmarkId;
+    const landmark = LANDMARKS.find(l => l.id === landmarkId)!;
+    state.lastEvent = `${current.username} สร้าง ${landmark.icon} ${landmark.name} ที่ ${space.name} (-฿${cost.toLocaleString()})`;
+    return this.serialize(state);
+  }
+
   giveUp(roomId: string, playerId: string): SerializableGameState | null {
     const state = this.games.get(roomId);
     if (!state || state.phase !== 'selling' || !state.pendingDebt) return null;
@@ -625,22 +676,25 @@ export class MonopolyService {
     const current = state.players[state.currentPlayerIndex];
     const owner = state.players.find(p => p.id === quiz.ownerId) ?? null;
     const correct = quiz.submittedAnswer === quiz.correctIndex;
-    const finalRent = correct
+    const discountedRent = correct
       ? Math.floor(quiz.rentAmount * (100 - discountPct) / 100)
       : quiz.rentAmount;
+    // Landmark fee always paid in full (not affected by quiz)
+    const finalTotal = discountedRent + quiz.landmarkFee;
 
     quiz.resolved = true;
     quiz.wasCorrect = correct;
-    quiz.finalRent = finalRent;
+    quiz.finalRent = finalTotal;
 
+    const feeNote = quiz.landmarkFee > 0 ? ` + ค่าเข้าชม ฿${quiz.landmarkFee.toLocaleString()}` : '';
     let msg = correct
-      ? `${current.username} ตอบถูก! ลด ${discountPct}% เหลือ ฿${finalRent.toLocaleString()}`
+      ? `${current.username} ตอบถูก! ค่าเช่าลด ${discountPct}% (฿${discountedRent.toLocaleString()})${feeNote} = รวม ฿${finalTotal.toLocaleString()}`
       : quiz.submittedAnswer === null
-        ? `${current.username} ตอบไม่ทัน — จ่ายค่าเช่าเต็ม ฿${finalRent.toLocaleString()}`
-        : `${current.username} ตอบผิด — จ่ายค่าเช่าเต็ม ฿${finalRent.toLocaleString()}`;
+        ? `${current.username} ตอบไม่ทัน — จ่ายเต็ม ฿${finalTotal.toLocaleString()}`
+        : `${current.username} ตอบผิด — จ่ายเต็ม ฿${finalTotal.toLocaleString()}`;
 
     if (owner && !owner.bankrupt) {
-      const r = this.chargePlayer(state, current, finalRent, owner, true);
+      const r = this.chargePlayer(state, current, finalTotal, owner, true);
       if (r.pending) msg += ` · ต้องขายทรัพย์สิน`;
       else if (r.bankrupt) msg += ` — ล้มละลาย! โอนทรัพย์สินให้ ${owner.username}`;
     }

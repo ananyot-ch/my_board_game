@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { GameState, PlayerState, OwnedProperty } from '../../types/game';
 import { GROUP_COLORS, SPACE_ICONS, getGridPos } from '../../lib/boardData';
+import { LANDMARK_BY_ID } from '../../lib/landmarkData';
 import { useGameStore } from '../../store/gameStore';
 
 interface Props {
@@ -86,10 +87,14 @@ function ownerBar(
     ...(oppositeSide === 'right'  && { right: 0,  top: 0,  bottom: 0, width: 8  }),
   };
 
-  // Building icons sit ON TOP of the owner bar
-  const buildingCount = owned.hotel ? 1 : owned.houses;
-  const buildingIcon = owned.hotel ? '🏨' : '🏠';
+  // Building / landmark icons sit ON TOP of the owner bar.
+  // Landmark (if present) overrides house/hotel icons.
+  const landmark = owned.landmark ? LANDMARK_BY_ID[owned.landmark] : null;
+  const buildingCount = landmark ? 1 : owned.hotel ? 1 : owned.houses;
+  const buildingIcon = landmark ? landmark.icon : owned.hotel ? '🏨' : '🏠';
 
+  const iconSize = landmark ? 13 : 8;
+  const iconBoxSize = landmark ? 16 : 12;
   const iconsStyle: React.CSSProperties = {
     position: 'absolute',
     display: 'flex',
@@ -97,18 +102,22 @@ function ownerBar(
     justifyContent: 'center',
     gap: 1,
     zIndex: 2,
-    fontSize: 8,
+    fontSize: iconSize,
     lineHeight: 1,
     textShadow: '0 0 2px rgba(0,0,0,0.6)',
-    ...(oppositeSide === 'top'    && { top: -3,    left: 0, right: 0,  height: 12, flexDirection: 'row' }),
-    ...(oppositeSide === 'bottom' && { bottom: -3, left: 0, right: 0,  height: 12, flexDirection: 'row' }),
-    ...(oppositeSide === 'left'   && { left: -3,   top: 0,  bottom: 0, width: 12,  flexDirection: 'column' }),
-    ...(oppositeSide === 'right'  && { right: -3,  top: 0,  bottom: 0, width: 12,  flexDirection: 'column' }),
+    ...(oppositeSide === 'top'    && { top: -3,    left: 0, right: 0,  height: iconBoxSize, flexDirection: 'row' }),
+    ...(oppositeSide === 'bottom' && { bottom: -3, left: 0, right: 0,  height: iconBoxSize, flexDirection: 'row' }),
+    ...(oppositeSide === 'left'   && { left: -3,   top: 0,  bottom: 0, width: iconBoxSize,  flexDirection: 'column' }),
+    ...(oppositeSide === 'right'  && { right: -3,  top: 0,  bottom: 0, width: iconBoxSize,  flexDirection: 'column' }),
   };
+
+  const titleText = landmark
+    ? `${landmark.name} · เจ้าของ: ${owner.username}`
+    : `เจ้าของ: ${owner.username}`;
 
   return (
     <>
-      <div style={barStyle} title={`เจ้าของ: ${owner.username}`} />
+      <div style={barStyle} title={titleText} />
       {buildingCount > 0 && (
         <div style={iconsStyle}>
           {Array.from({ length: Math.min(buildingCount, isHorizontal ? 5 : 4) }).map((_, i) => (
@@ -252,6 +261,17 @@ function SpaceDetailModal({
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">ราคาบ้าน / โรงแรม</span>
               <span className="text-white">฿{space.houseCost.toLocaleString()}</span>
+            </div>
+          )}
+
+          {/* Landmark */}
+          {owned?.landmark && LANDMARK_BY_ID[owned.landmark] && (
+            <div className="bg-purple-900/30 border border-purple-700/50 rounded-lg p-2.5 flex items-center gap-2">
+              <span className="text-2xl">{LANDMARK_BY_ID[owned.landmark].icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-purple-200 text-sm font-semibold truncate">{LANDMARK_BY_ID[owned.landmark].name}</p>
+                <p className="text-purple-400/80 text-[10px]">สิ่งมหัศจรรย์ · ผู้เดินตกจ่ายค่าเข้าชมเพิ่ม</p>
+              </div>
             </div>
           )}
 

@@ -71,6 +71,18 @@ export default function RulesModal({ onClose }: Props) {
           </section>
 
           <section>
+            <h3 className="text-indigo-400 font-semibold mb-2">🏛️ สิ่งมหัศจรรย์ (Landmarks)</h3>
+            <ul className="space-y-1.5 text-gray-300 list-disc list-inside leading-relaxed">
+              <li>สร้างได้เมื่อที่ดินมี <b className="text-white">โรงแรม</b> แล้วเท่านั้น</li>
+              <li>เลือกได้ <b className="text-purple-300">21 ตัวเลือก</b> จาก 3 ยุค (โบราณ, 2007, สมัยใหม่)</li>
+              <li>แต่ละ Landmark สร้าง<b className="text-yellow-300">ได้ครั้งเดียวต่อเกม</b></li>
+              <li>ผู้เดินตกที่ดินที่มี Landmark จ่าย <b className="text-white">ค่าเข้าชม</b> เพิ่มจากค่าเช่า</li>
+              <li>ค่าเข้าชม <b className="text-red-300">ไม่โดน quiz หักลด</b> — จ่ายเต็มเสมอ</li>
+              <li><b className="text-gray-400">ขายคืนไม่ได้</b> — สร้างแล้วสร้างเลย</li>
+            </ul>
+          </section>
+
+          <section>
             <h3 className="text-indigo-400 font-semibold mb-2">🧠 โหมดควิซ (ถ้าเปิด)</h3>
             <ul className="space-y-1.5 text-gray-300 list-disc list-inside leading-relaxed">
               <li>ก่อนจ่ายค่าเช่า ระบบจะสุ่มคำถาม 4 ตัวเลือก</li>

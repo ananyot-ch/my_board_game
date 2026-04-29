@@ -60,8 +60,15 @@ export default function QuizModal({ quiz, space, ownerName, isMyTurn, roomId, di
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="text-xs text-gray-400">{space?.name ?? 'ที่ดิน'} · ค่าเช่า ฿{quiz.rentAmount.toLocaleString()}</div>
-            <div className="text-xs text-yellow-300 mt-0.5">ตอบถูกลด {discountPct}% (เหลือ ฿{Math.floor(quiz.rentAmount * (100 - discountPct) / 100).toLocaleString()})</div>
+            <div className="text-xs text-gray-400">
+              {space?.name ?? 'ที่ดิน'} · ค่าเช่า ฿{quiz.rentAmount.toLocaleString()}
+              {quiz.landmarkFee > 0 && (
+                <span className="text-purple-300"> + 🏛️ ค่าเข้าชม ฿{quiz.landmarkFee.toLocaleString()}</span>
+              )}
+            </div>
+            <div className="text-xs text-yellow-300 mt-0.5">
+              ตอบถูกลดค่าเช่า {discountPct}% (เหลือ ฿{(Math.floor(quiz.rentAmount * (100 - discountPct) / 100) + quiz.landmarkFee).toLocaleString()})
+            </div>
           </div>
           {!quiz.resolved && quiz.deadlineMs && (
             <div className="text-right">

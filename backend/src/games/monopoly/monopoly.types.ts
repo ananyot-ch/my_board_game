@@ -51,6 +51,8 @@ export interface GameSettings {
   quizEnabled: boolean;        // ask trivia before paying rent
   quizDiscountPct: number;     // 0-100 rent discount on correct answer
   quizTimeoutSec: number;      // seconds to answer
+  landmarkPrice: number;       // cost to build a landmark (requires hotel)
+  landmarkVisitFee: number;    // fee paid by other players landing on a landmark space
 }
 
 export interface PlayerState {
@@ -67,6 +69,7 @@ export interface OwnedProperty {
   ownerId: string;
   houses: number;
   hotel: boolean;
+  landmark?: string; // id from LANDMARKS — only set after hotel built
 }
 
 export interface PendingDebt {
@@ -77,6 +80,8 @@ export interface PendingDebt {
 /** Quiz state (server-side has correctIndex; client gets it stripped) */
 export interface PendingQuiz {
   rentAmount: number;
+  /** Landmark visit fee — paid in full regardless of quiz answer */
+  landmarkFee: number;
   ownerId: string;
   position: number;
   question: string | null;   // null = still generating

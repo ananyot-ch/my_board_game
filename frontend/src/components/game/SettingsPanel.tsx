@@ -175,6 +175,37 @@ export default function SettingsPanel({ settings, isHost, onChange }: Props) {
                 </div>
               </>
             )}
+
+            <div className="border-t border-gray-700 pt-3 mt-1">
+              <p className="text-xs text-purple-300 font-semibold mb-2">🏛️ สิ่งมหัศจรรย์ (Landmarks)</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1.5">ราคาสร้าง</label>
+                  <input
+                    type="number"
+                    value={settings.landmarkPrice}
+                    disabled={!isHost}
+                    min={1000}
+                    step={500}
+                    onChange={e => update({ landmarkPrice: Number(e.target.value) })}
+                    className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1.5">ค่าเข้าชม</label>
+                  <input
+                    type="number"
+                    value={settings.landmarkVisitFee}
+                    disabled={!isHost}
+                    min={0}
+                    step={100}
+                    onChange={e => update({ landmarkVisitFee: Number(e.target.value) })}
+                    className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-1.5">สร้างได้บนที่ดินที่มีโรงแรมแล้ว · ค่าเข้าชมไม่โดน quiz หัก</p>
+            </div>
           </div>
 
           {!isHost && (

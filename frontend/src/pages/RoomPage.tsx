@@ -25,6 +25,8 @@ function defaultSettings(): GameSettings {
     quizEnabled: true,
     quizDiscountPct: 20,
     quizTimeoutSec: 10,
+    landmarkPrice: 10000,
+    landmarkVisitFee: 2000,
   };
 }
 
@@ -209,6 +211,7 @@ export default function RoomPage() {
               gameState={gameState}
               myId={user?.id ?? ''}
               roomId={id!}
+              settings={settings}
               messages={messages}
               chatInput={chatInput}
               onChatChange={setChatInput}
